@@ -1,13 +1,14 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "527dcbed47577119f27372363add0883"
-application_url = "https://example.com/"
+application_url = "https://donations-algorithm-cemetery-rolls.trycloudflare.com"
 embedded = true
 name = "Tracksure"
 handle = "tracksure-1"
 
 [build]
 include_config_on_deploy = true
+automatically_update_urls_on_dev = true
 
 [webhooks]
 api_version = "2025-01"
@@ -22,10 +23,14 @@ api_version = "2025-01"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products"
+scopes = "write_products, write_orders, read_orders, read_customers"
 
 [auth]
-redirect_urls = [ "https://example.com/api/auth" ]
+redirect_urls = [
+  "https://donations-algorithm-cemetery-rolls.trycloudflare.com/auth/callback",
+  "https://donations-algorithm-cemetery-rolls.trycloudflare.com/auth/shopify/callback",
+  "https://donations-algorithm-cemetery-rolls.trycloudflare.com/api/auth/callback"
+]
 
 [pos]
 embedded = false
