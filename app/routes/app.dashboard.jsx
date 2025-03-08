@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Page,
   Card,
@@ -7,6 +7,7 @@ import {
   Layout,
   Text,
   Badge,
+  Banner,
 } from "@shopify/polaris";
 import { Line } from "react-chartjs-2";
 import {
@@ -98,6 +99,8 @@ ChartJS.register(
 );
 
 const Dashboard = () => {
+  const [showBanner, setShowBanner] = useState(true);
+
   // Transform API data into Chart.js format
   const chartData = {
     labels: API_RESPONSE_DATA.profitCurve.orderPoints,
@@ -157,6 +160,17 @@ const Dashboard = () => {
   return (
     <Page title="Dashboard">
       <Layout>
+        {showBanner && (
+          <Layout.Section>
+            <Banner 
+              tone="warning" 
+              title={`Let the orders reach ${API_RESPONSE_DATA.profitCurve.optimalZone.maxOrder} of daily orders`}
+              onDismiss={() => setShowBanner(false)}
+            >
+            </Banner>
+          </Layout.Section>
+        )}
+
         <Layout.Section>
           <Card>
             <Line data={chartData} options={chartOptions} />
