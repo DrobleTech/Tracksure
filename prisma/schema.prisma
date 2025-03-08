@@ -13,20 +13,252 @@ datasource db {
   url      = "file:dev.sqlite"
 }
 
+// ==========================================
+// Session Model
+// Used in: Shopify authentication system
+// File: app/shopify.server.js
+// Purpose: Manages Shopify session data for user authentication and authorization
+// ==========================================
 model Session {
   id            String    @id
-  shop          String
-  state         String
-  isOnline      Boolean   @default(false)
-  scope         String?
-  expires       DateTime?
-  accessToken   String
-  userId        BigInt?
-  firstName     String?
-  lastName      String?
-  email         String?
-  accountOwner  Boolean   @default(false)
-  locale        String?
-  collaborator  Boolean?  @default(false)
-  emailVerified Boolean?  @default(false)
+  shop          String // Store identifier
+  state         String // Session state for security
+  isOnline      Boolean   @default(false) // Whether session is active
+  scope         String? // Permission scopes
+  expires       DateTime? // Session expiry time
+  accessToken   String // OAuth access token
+  userId        BigInt? // Shopify user ID
+  firstName     String? // User's first name
+  lastName      String? // User's last name
+  email         String? // User's email
+  accountOwner  Boolean   @default(false) // Whether user owns the account
+  locale        String? // User's locale preference
+  collaborator  Boolean?  @default(false) // Whether user is a collaborator
+  emailVerified Boolean?  @default(false) // Email verification status
+}
+
+// ==========================================
+// Product Model
+// Used in: Settings page and Order management
+// Files: 
+// - app/routes/app.settings.jsx (Product configuration)
+// - app/routes/app.orders.jsx (Product reference in orders)
+// Purpose: Stores product information and pricing details
+// ==========================================
+model Product {
+  id        Int      @id @default(autoincrement())
+  name      String // Product name
+  price     Float // Selling price
+  mrp       Float // Maximum retail price
+  shipping  Float // Shipping cost
+  cpp       Float // Cost per product
+  packing   Float // Packing cost
+  // orders      Order[]   // Related orders
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// Customer Model
+// Used in: Orders page and customer management
+// Files: 
+// - app/routes/app.orders.jsx
+// - app/services/orders.server.js
+// Purpose: Stores customer information and their order history
+// ==========================================
+model Customer {
+  id        String   @id // Shopify customer ID
+  firstName String?
+  lastName  String?
+  email     String   @unique
+  phone     String?
+  state     String? // Customer state/status
+  tags      String? // Customer tags
+  orders    Order[] // Relation to orders
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// Order Model
+// Used in: Orders page
+// File: app/routes/app.orders.jsx
+// Purpose: Tracks customer orders and their various statuses
+// ==========================================
+model Order {
+  id               Int            @id @default(autoincrement())
+  orderDate        DateTime // When order was placed
+  name             String // Customer name
+  email            String // Customer email
+  phone            String // Customer phone
+  orderId          String         @unique // External order reference
+  // product        Product   @relation(fields: [productId], references: [id])
+  productId        BigInt // Reference to product
+  payment          PaymentStatus // Payment status (PAID/PENDING)
+  paymentMethod    PaymentMethod // Payment method used
+  tier             String // Customer tier (Premium/Standard)
+  address          String // Delivery address
+  customer         Customer?      @relation(fields: [customerId], references: [id]) // Relation to customer
+  customerId       String? // Reference to customer
+  riskVerification RiskStatus // Risk verification status
+  tags             String? // Order tags (Priority/New/Urgent)
+  otp              OTPStatus // OTP verification status
+  ivr              IVRStatus // IVR call status
+  shipmentStatus   ShipmentStatus // Current shipment status
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+// ==========================================
+// Settings Model
+// Used in: Settings page
+// File: app/routes/app.settings.jsx
+// Purpose: Stores application configuration
+// ==========================================
+model Settings {
+  id                     Int      @id @default(autoincrement())
+  otpEnabled             Boolean  @default(true) // OTP verification toggle
+  currentPastDPercentage Float // Past delivery percentage
+  allowedFileFormats     String // Allowed upload formats (.csv,.xlsx)
+  updatedAt              DateTime @updatedAt
+}
+
+// ==========================================
+// Enums
+// Used in: Order processing and status tracking
+// Files: 
+// - app/routes/app.orders.jsx
+// - app/routes/app.dashboard.jsx
+// Purpose: Define standardized status values aligned with Shopify API
+// ==========================================
+
+// Matches Shopify's financial_status field
+enum PaymentStatus {
+  AUTHORIZED // Payment has been authorized but not captured
+  PAID // Payment has been received
+  PARTIALLY_PAID // Partial payment has been received
+  PARTIALLY_REFUNDED // Order has been partially refunded
+  PENDING // Payment is pending
+  REFUNDED // Order has been fully refunded
+  VOIDED // Payment has been voided
+}
+
+// Matches Shopify's payment_gateway_names field
+enum PaymentMethod {
+  CREDIT_CARD // Credit card payment
+  DEBIT // Debit card payment
+  PAYPAL // PayPal payment
+  SHOP_PAY // Shop Pay payment
+  APPLE_PAY // Apple Pay payment
+  GOOGLE_PAY // Google Pay payment
+  BANK_TRANSFER // Direct bank transfer
+  CASH_ON_DELIVERY // Cash on delivery
+}
+
+// Matches Shopify's risk_level field
+enum RiskStatus {
+  HIGH // High risk order
+  MEDIUM // Medium risk order
+  LOW // Low risk order
+  VERIFIED // Order has been verified
+  PENDING // Risk assessment pending
+}
+
+// Custom enum for OTP verification
+enum OTPStatus {
+  VERIFIED // OTP has been verified
+  PENDING // OTP verification pending
+  FAILED // OTP verification failed
+  EXPIRED // OTP has expired
+  NOT_SENT // OTP not sent yet
+}
+
+// Custom enum for IVR status
+enum IVRStatus {
+  COMPLETED // IVR call completed successfully
+  PENDING // IVR call pending
+  FAILED // IVR call failed
+  NO_ANSWER // No answer on IVR call
+  BUSY // Line was busy
+  SCHEDULED // Call scheduled for later
+}
+
+// Matches Shopify's fulfillment_status field
+enum ShipmentStatus {
+  FULFILLED // Order has been fulfilled
+  PARTIAL // Order has been partially fulfilled
+  UNFULFILLED // Order has not been fulfilled
+  DELIVERED // Order has been delivered
+  IN_TRANSIT // Order is in transit
+  OUT_FOR_DELIVERY // Order is out for delivery
+  ATTEMPTED // Delivery was attempted
+  FAILED // Delivery failed
+  CANCELLED // Order was cancelled
+  ON_HOLD // Order is on hold
+  RETURNED // Order was returned
+}
+
+// ==========================================
+// Analytics Models
+// Used in: Dashboard metrics and analytics
+// File: app/routes/app.dashboard.jsx
+// Purpose: Stores all dashboard-related metrics
+// ==========================================
+
+// Singleton model to store the latest analytics snapshot
+
+
+// Profit curve data
+model ProfitCurve {
+  id           String     @id @default("singleton")
+  orderPoints  String     @default("[]") // JSON string of Int array
+  profitValues String     @default("[]") // JSON string of Float array
+  maxOrder     Int // Optimal zone max order
+  maxProfit    Float // Optimal zone max profit
+  updatedAt    DateTime   @updatedAt
+
+  @@map("profit_curve")
+}
+
+// Key metrics
+model Metrics {
+  id                String     @id @default("singleton")
+  cutOffQuality     Float
+  totalOrders       Int
+  flaggedOrders     Int
+  ordersToShip      Int
+  tracksureDelivery Int
+  updatedAt         DateTime   @updatedAt
+
+  @@map("metrics")
+}
+
+// Performance metrics for different shipping methods
+model Performance {
+  id          String     @id @default("singleton")
+  allShipping String // JSON string of shipping performance
+  trackscore  String // JSON string of shipping performance
+  updatedAt   DateTime   @updatedAt
+
+  @@map("performance")
+}
+
+// Cost tracking for different shipping methods
+model Costs {
+  id          String     @id @default("singleton")
+  allShipping String // JSON string of shipping costs
+  trackscore  String // JSON string of shipping costs
+  updatedAt   DateTime   @updatedAt
+
+  @@map("costs")
+}
+
+// Summary metrics for different shipping methods
+model Summary {
+  id          String     @id @default("singleton")
+  allShipping String // JSON string of shipping summary
+  trackscore  String // JSON string of shipping summary
+  updatedAt   DateTime   @updatedAt
+
+  @@map("summary")
 }

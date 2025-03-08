@@ -1,14 +1,5 @@
 import React, { useState } from "react";
-import {
-  Page,
-  Card,
-  Button,
-  InlineStack,
-  Layout,
-  Text,
-  Badge,
-  Banner,
-} from "@shopify/polaris";
+import { Page, Card, Layout, Text, Banner } from "@shopify/polaris";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -21,71 +12,9 @@ import {
   Legend,
 } from "chart.js";
 import annotationPlugin from "chartjs-plugin-annotation";
-
-// Dummy API response data structure
-const API_RESPONSE_DATA = {
-  profitCurve: {
-    orderPoints: [0, 20, 40, 60, 80, 100, 120, 140, 154],
-    profitValues: [0, 1000, 2800, 4500, 6800, 8200, 9100, 8800, 7500],
-    optimalZone: {
-      maxOrder: 120,
-      maxProfit: 9100,
-    },
-  },
-  metrics: {
-    cutOffQuality: 75,
-    totalOrders: 156,
-    flaggedOrders: 36,
-    ordersToShip: 120,
-    tracksureDelivery: 78,
-  },
-  performanceMetrics: {
-    allShipping: {
-      totalOrders: 156,
-      deliveryPercentage: 55,
-      undeliveredOrders: 36,
-    },
-    trackscore: {
-      totalOrders: 120,
-      deliveryPercentage: 78,
-      undeliveredOrders: 10,
-    },
-  },
-  costs: {
-    allShipping: {
-      revenue: 3200,
-      productCosts: 10000,
-      adCosts: 8000,
-      shippingCosts: 5500,
-      packingCosts: 1020,
-    },
-    trackscore: {
-      revenue: 3100,
-      productCosts: 8400,
-      adCosts: 8000,
-      shippingCosts: 4620,
-      packingCosts: 660,
-    },
-  },
-  summary: {
-    allShipping: {
-      netProfit: 7480,
-      inventrySaved: 0,
-      capitalUsed: 24520,
-      capitalSaved: 0,
-      capitalEfficiency: 0,
-      totalSavings: 0,
-    },
-    trackscore: {
-      netProfit: 9320,
-      inventrySaved: 8,
-      capitalUsed: 21680,
-      capitalSaved: 2840,
-      capitalEfficiency: 0,
-      totalSavings: 4680,
-    },
-  },
-};
+import { json } from "@remix-run/node";
+import { useLoaderData } from "@remix-run/react";
+import { getAnalytics } from "../services/analytics.server";
 
 ChartJS.register(
   CategoryScale,
@@ -95,24 +24,65 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  annotationPlugin,
+  annotationPlugin
+);
+
+export const loader = async () => json(await getAnalytics());
+
+const SectionTitle = ({ children }) => (
+  <div style={styles.sectionTitleContainer}>
+    <div style={styles.sectionTitleLine} />
+    <div style={styles.sectionTitleText}>
+      <Text variant="headingSm" as="h4">{children}</Text>
+    </div>
+  </div>
+);
+
+const MetricCard = ({ title, value }) => (
+  <div style={styles.metricCardContainer}>
+    <Card title={title} sectioned>
+      <Text variant="bodyXl">{title}</Text>
+      <Text variant="headingXl">{value}</Text>
+    </Card>
+  </div>
+);
+
+const DataTable = ({ headers, rows }) => (
+  <Card sectioned>
+    <table style={styles.table}>
+      <thead>
+        <tr>
+          {headers.map((header, i) => (
+            <th key={i} style={styles.th}>{header}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, i) => (
+          <tr key={i}>
+            {row.map((cell, j) => (
+              <td key={j} style={styles.td}>{cell}</td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </Card>
 );
 
 const Dashboard = () => {
+  const data = useLoaderData();
   const [showBanner, setShowBanner] = useState(true);
 
-  // Transform API data into Chart.js format
   const chartData = {
-    labels: API_RESPONSE_DATA.profitCurve.orderPoints,
-    datasets: [
-      {
-        label: "Profit Curve (₹)",
-        data: API_RESPONSE_DATA.profitCurve.profitValues,
-        borderColor: "#0073e6",
-        backgroundColor: "rgba(0, 115, 230, 0.5)",
-        tension: 0.4,
-      },
-    ],
+    labels: data.profitCurve.orderPoints,
+    datasets: [{
+      label: "Profit Curve (₹)",
+      data: data.profitCurve.profitValues,
+      borderColor: "#0073e6",
+      backgroundColor: "rgba(0, 115, 230, 0.5)",
+      tension: 0.4,
+    }],
   };
 
   const chartOptions = {
@@ -121,18 +91,12 @@ const Dashboard = () => {
       y: {
         type: "linear",
         beginAtZero: true,
-        title: {
-          display: true,
-          text: "Profit (₹)",
-        },
+        title: { display: true, text: "Profit (₹)" },
       },
       x: {
         type: "linear",
         beginAtZero: true,
-        title: {
-          display: true,
-          text: "Number of Orders",
-        },
+        title: { display: true, text: "Number of Orders" },
       },
     },
     plugins: {
@@ -141,13 +105,13 @@ const Dashboard = () => {
           optimalZone: {
             type: "line",
             yMin: 0,
-            yMax: API_RESPONSE_DATA.profitCurve.optimalZone.maxProfit,
-            xMin: API_RESPONSE_DATA.profitCurve.optimalZone.maxOrder,
-            xMax: API_RESPONSE_DATA.profitCurve.optimalZone.maxOrder,
+            yMax: data.profitCurve.optimalZone.maxProfit,
+            xMin: data.profitCurve.optimalZone.maxOrder,
+            xMax: data.profitCurve.optimalZone.maxOrder,
             borderColor: "rgb(255, 99, 132)",
             borderWidth: 2,
             label: {
-              display: true,
+              display: false,
               content: "Cut-off Point",
               position: "top",
             },
@@ -157,17 +121,48 @@ const Dashboard = () => {
     },
   };
 
+  const metrics = [
+    { title: "Cut-off Quality", value: `${data.metrics.cutOffQuality}%` },
+    { title: "Total Orders", value: data.metrics.totalOrders },
+    { title: "Flagged", value: data.metrics.flaggedOrders },
+    { title: "Orders to Ship", value: data.metrics.ordersToShip },
+    { title: "TrackScore Delivery %", value: `${data.metrics.tracksureDelivery}%` },
+  ];
+
+  const performanceHeaders = ["", "All shipping", "Trackscore delivery"];
+  const performanceRows = [
+    ["Total Orders", data.performanceMetrics.allShipping.totalOrders, data.performanceMetrics.trackscore.totalOrders],
+    ["Delivery %", `${data.performanceMetrics.allShipping.deliveryPercentage}%`, `${data.performanceMetrics.trackscore.deliveryPercentage}%`],
+    ["Undelivered Orders", data.performanceMetrics.allShipping.undeliveredOrders, data.performanceMetrics.trackscore.undeliveredOrders],
+  ];
+
+  const costsRows = [
+    ["Revenue (+) [Delievred orders]", `₹ ${data.costs.allShipping.revenue}`, `₹ ${data.costs.trackscore.revenue}`],
+    ["Product Costs (-)", `₹ ${data.costs.allShipping.productCosts}`, `₹ ${data.costs.trackscore.productCosts}`],
+    ["Ad Costs (-)", `₹ ${data.costs.allShipping.adCosts}`, `₹ ${data.costs.trackscore.adCosts}`],
+    ["Shipping Costs (-)", `₹ ${data.costs.allShipping.shippingCosts}`, `₹ ${data.costs.trackscore.shippingCosts}`],
+    ["Packing Costs (-) [RTO Loss]", `₹ ${data.costs.allShipping.packingCosts}`, `₹ ${data.costs.trackscore.packingCosts}`],
+  ];
+
+  const summaryRows = [
+    ["Net profit (Σ)", `₹ ${data.summary.allShipping.netProfit}`, `₹ ${data.summary.trackscore.netProfit}`],
+    ["Inventry saved", `₹ ${data.summary.allShipping.inventrySaved}`, `₹ ${data.summary.trackscore.inventrySaved}`],
+    ["Capital used", `₹ ${data.summary.allShipping.capitalUsed}`, `₹ ${data.summary.trackscore.capitalUsed}`],
+    ["Capital saved", `₹ ${data.summary.allShipping.capitalSaved}`, `₹ ${data.summary.trackscore.capitalSaved}`],
+    ["Capital efficiency", `₹ ${data.summary.allShipping.capitalEfficiency}`, `₹ ${data.summary.trackscore.capitalEfficiency}`],
+    ["Total savings", `₹ ${data.summary.allShipping.totalSavings}`, `₹ ${data.summary.trackscore.totalSavings}`],
+  ];
+
   return (
     <Page title="Dashboard">
       <Layout>
         {showBanner && (
           <Layout.Section>
-            <Banner 
-              tone="warning" 
-              title={`Let the orders reach ${API_RESPONSE_DATA.profitCurve.optimalZone.maxOrder} of daily orders`}
+            <Banner
+              tone="warning"
+              title={`Let the orders reach ${data.profitCurve.optimalZone.maxOrder} of daily orders`}
               onDismiss={() => setShowBanner(false)}
-            >
-            </Banner>
+            />
           </Layout.Section>
         )}
 
@@ -178,339 +173,26 @@ const Dashboard = () => {
         </Layout.Section>
 
         <Layout.Section>
-          <InlineStack wrap={false} align="center" gap={100}>
-            <div style={{ width: "100%", textAlign: "center" }}>
-              <Card title="Cut-off Quality" sectioned>
-                <Text variant="bodyXl">Cut-off Quality</Text>
-                <Text variant="headingXl">{API_RESPONSE_DATA.metrics.cutOffQuality}%</Text>
-              </Card>
-            </div>
-            <div style={{ width: "100%", textAlign: "center" }}>
-              <Card title="Total Orders" sectioned>
-                <Text variant="bodyXl">Total Orders</Text>
-                <Text variant="headingXl">{API_RESPONSE_DATA.metrics.totalOrders}</Text>
-              </Card>
-            </div>
-            <div style={{ width: "100%", textAlign: "center" }}>
-              <Card title="Flagged" sectioned>
-                <Text variant="bodyXl">Flagged</Text>
-                <Text variant="headingXl">{API_RESPONSE_DATA.metrics.flaggedOrders}</Text>
-              </Card>
-            </div>
-            <div style={{ width: "100%", textAlign: "center" }}>
-              <Card title="Orders to Ship" sectioned>
-                <Text variant="bodyXl">Orders to Ship</Text>
-                <Text variant="headingXl">{API_RESPONSE_DATA.metrics.ordersToShip}</Text>
-              </Card>
-            </div>
-            <div style={{ width: "100%", textAlign: "center" }}>
-              <Card title="TrackScore Delivery %" sectioned>
-                <Text variant="bodyXl">TrackScore Delivery</Text>
-                <Text variant="headingXl">{API_RESPONSE_DATA.metrics.tracksureDelivery}%</Text>
-              </Card>
-            </div>
-          </InlineStack>
+          <div style={styles.metricsContainer}>
+            {metrics.map((metric, i) => (
+              <MetricCard key={i} {...metric} />
+            ))}
+          </div>
         </Layout.Section>
 
         <Layout.Section>
-          <div
-            style={{
-              position: "relative",
-              textAlign: "center",
-              margin: " 0 0 12px 0",
-              zIndex: "1",
-            }}
-          >
-            <div
-              style={{
-                height: "1px",
-                width: "100%",
-                border: "1px dashed #ccc",
-                position: "absolute",
-                top: "50%",
-                transform: "translateY(-50%)",
-                zIndex: "-1",
-              }}
-            >
-              {" "}
-            </div>
-            <div
-              style={{
-                background: "white",
-                width: "fit-content",
-                padding: "4px 12px",
-                borderRadius: "4px",
-                boxShadow: "var(--p-shadow-button)",
-                zIndex: "1",
-                margin: "0 auto",
-              }}
-            >
-              <Text variant="headingSm" as="h4">
-                Performance metrics
-              </Text>
-            </div>
-          </div>
-          <Card sectioned>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}></th>
-                  <th style={styles.th}>All shipping</th>
-                  <th style={styles.th}>Trackscore delivery</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={styles.td}>Total Orders</td>
-                  <td style={styles.td}>
-                    {
-                      API_RESPONSE_DATA.performanceMetrics.allShipping
-                        .totalOrders
-                    }
-                  </td>
-                  <td style={styles.td}>
-                    {
-                      API_RESPONSE_DATA.performanceMetrics.trackscore
-                        .totalOrders
-                    }
-                  </td>
-                </tr>
-                <tr>
-                  <td style={styles.td}>Delivery %</td>
-                  <td style={styles.td}>
-                    {
-                      API_RESPONSE_DATA.performanceMetrics.allShipping
-                        .deliveryPercentage
-                    }
-                    %
-                  </td>
-                  <td style={styles.td}>
-                    {
-                      API_RESPONSE_DATA.performanceMetrics.trackscore
-                        .deliveryPercentage
-                    }
-                    %
-                  </td>
-                </tr>
-                <tr>
-                  <td style={styles.td}>Undelivered Orders</td>
-                  <td style={styles.td}>
-                    {
-                      API_RESPONSE_DATA.performanceMetrics.allShipping
-                        .undeliveredOrders
-                    }
-                  </td>
-                  <td style={styles.td}>
-                    {
-                      API_RESPONSE_DATA.performanceMetrics.trackscore
-                        .undeliveredOrders
-                    }
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </Card>
+          <SectionTitle>Performance metrics</SectionTitle>
+          <DataTable headers={performanceHeaders} rows={performanceRows} />
         </Layout.Section>
 
         <Layout.Section>
-          <div
-            style={{
-              position: "relative",
-              textAlign: "center",
-              margin: " 0 0 12px 0",
-              zIndex: "1",
-            }}
-          >
-            <div
-              style={{
-                height: "1px",
-                width: "100%",
-                border: "1px dashed #ccc",
-                position: "absolute",
-                top: "50%",
-                transform: "translateY(-50%)",
-                zIndex: "-1",
-              }}
-            ></div>
-            <div
-              style={{
-                background: "white",
-                width: "fit-content",
-                padding: "4px 12px",
-                borderRadius: "4px",
-                boxShadow: "var(--p-shadow-button)",
-                zIndex: "1",
-                margin: "0 auto",
-              }}
-            >
-              <Text variant="headingSm" as="h4">
-                Costs
-              </Text>
-            </div>
-          </div>
-          <Card sectioned>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}></th>
-                  <th style={styles.th}>All shipping</th>
-                  <th style={styles.th}>Trackscore delivery</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={styles.td}>Revenue (+) [Delievred orders]</td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.costs.allShipping.revenue}
-                  </td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.costs.trackscore.revenue}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={styles.td}>Product Costs (-)</td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.costs.allShipping.productCosts}
-                  </td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.costs.trackscore.productCosts}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={styles.td}>Ad Costs (-)</td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.costs.allShipping.adCosts}
-                  </td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.costs.trackscore.adCosts}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={styles.td}>Shipping Costs (-)</td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.costs.allShipping.shippingCosts}
-                  </td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.costs.trackscore.shippingCosts}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={styles.td}>Packing Costs (-) [RTO Loss]</td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.costs.allShipping.packingCosts}
-                  </td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.costs.trackscore.packingCosts}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </Card>
+          <SectionTitle>Costs</SectionTitle>
+          <DataTable headers={performanceHeaders} rows={costsRows} />
         </Layout.Section>
 
         <Layout.Section>
-          <div
-            style={{
-              position: "relative",
-              textAlign: "center",
-              margin: " 0 0 12px 0",
-              zIndex: "1",
-            }}
-          >
-            <div
-              style={{
-                height: "1px",
-                width: "100%",
-                border: "1px dashed #ccc",
-                position: "absolute",
-                top: "50%",
-                transform: "translateY(-50%)",
-                zIndex: "-1",
-              }}
-            ></div>
-            <div
-              style={{
-                background: "white",
-                width: "fit-content",
-                padding: "4px 12px",
-                borderRadius: "4px",
-                boxShadow: "var(--p-shadow-button)",
-                zIndex: "1",
-                margin: "0 auto",
-              }}
-            >
-              <Text variant="headingSm" as="h4">
-                Summary
-              </Text>
-            </div>
-          </div>
-          <Card sectioned>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}></th>
-                  <th style={styles.th}>All shipping</th>
-                  <th style={styles.th}>Trackscore delivery</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={styles.td}>Net profit (Σ)</td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.summary.allShipping.netProfit}
-                  </td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.summary.trackscore.netProfit}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={styles.td}>Inventry saved</td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.summary.allShipping.inventrySaved}
-                  </td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.summary.trackscore.inventrySaved}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={styles.td}>Capital used</td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.summary.allShipping.capitalUsed}
-                  </td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.summary.trackscore.capitalUsed}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={styles.td}>Capital saved</td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.summary.allShipping.capitalSaved}
-                  </td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.summary.trackscore.capitalSaved}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={styles.td}>Capital efficiency</td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.summary.allShipping.capitalEfficiency}
-                  </td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.summary.trackscore.capitalEfficiency}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={styles.td}>Total savings</td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.summary.allShipping.totalSavings}
-                  </td>
-                  <td style={styles.td}>
-                    ₹ {API_RESPONSE_DATA.summary.trackscore.totalSavings}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </Card>
+          <SectionTitle>Summary</SectionTitle>
+          <DataTable headers={performanceHeaders} rows={summaryRows} />
         </Layout.Section>
       </Layout>
     </Page>
@@ -521,14 +203,42 @@ const styles = {
   table: {
     width: "100%",
     borderCollapse: "collapse",
-    fontFamily:
-      "-apple-system, BlinkMacSystemFont, 'San Francisco', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'San Francisco', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif",
   },
-  th: {
-    textAlign: "left",
+  th: { textAlign: "left" },
+  td: { textAlign: "left" },
+  metricsContainer: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "20px",
   },
-  td: {
-    textAlign: "left",
+  metricCardContainer: {
+    width: "100%",
+    textAlign: "center",
+  },
+  sectionTitleContainer: {
+    position: "relative",
+    textAlign: "center",
+    margin: "0 0 12px 0",
+    zIndex: "1",
+  },
+  sectionTitleLine: {
+    height: "1px",
+    width: "100%",
+    border: "1px dashed #ccc",
+    position: "absolute",
+    top: "50%",
+    transform: "translateY(-50%)",
+    zIndex: "-1",
+  },
+  sectionTitleText: {
+    background: "white",
+    width: "fit-content",
+    padding: "4px 12px",
+    borderRadius: "4px",
+    boxShadow: "var(--p-shadow-button)",
+    zIndex: "1",
+    margin: "0 auto",
   },
 };
 

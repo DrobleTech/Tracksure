@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { json } from "@remix-run/node";
+import { useLoaderData, useSubmit } from "@remix-run/react";
 import {
   Page,
   TextField,
@@ -12,6 +14,7 @@ import {
   Text,
   Spinner,
 } from "@shopify/polaris";
+import { getSettings, updateOTPEnabled } from "../services/settings.server";
 
 /**
  * Mock API response structure
@@ -80,20 +83,41 @@ const styles = {
   },
 };
 
+// Action function to handle form submissions
+export async function action({ request }) {
+  const formData = await request.formData();
+  const enabled = formData.get("otpEnabled") === "true";
+  
+  await updateOTPEnabled(enabled);
+  return json({ success: true });
+}
+
+// Loader function to get initial data
+export async function loader() {
+  const settings = await getSettings();
+  return json({
+    settings,
+    products: DUMMY_API_RESPONSE.products,
+    delivery: DUMMY_API_RESPONSE.delivery,
+  });
+}
+
 /**
  * Settings Page Component
  * Handles product pricing, delivery settings, and OTP configuration
  */
 const SettingsPage = () => {
+  const submit = useSubmit();
+  const { settings, products: initialProducts, delivery: initialDelivery } = useLoaderData();
+
   // API related states
-  const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Form states
-  const [products, setProducts] = useState([]);
-  const [delivery, setDelivery] = useState({});
-  const [otpEnabled, setOtpEnabled] = useState(false);
+  const [products, setProducts] = useState(initialProducts);
+  const [delivery, setDelivery] = useState(initialDelivery);
+  const [otpEnabled, setOtpEnabled] = useState(settings.otpEnabled);
   const [otpReceived, setOtpReceived] = useState("yes");
   const [files, setFiles] = useState([]);
 
@@ -102,37 +126,6 @@ const SettingsPage = () => {
     { label: "Yes", value: "yes" },
     { label: "No", value: "no" },
   ];
-
-  /**
-   * Fetch settings data from API
-   */
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        // TODO: Replace with actual API call
-        // const response = await fetch('your-api-endpoint');
-        // const result = await response.json();
-        
-        // Simulating API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const result = DUMMY_API_RESPONSE;
-
-        // Update state with API data
-        setData(result);
-        setProducts(result.products);
-        setDelivery(result.delivery);
-        setOtpEnabled(result.settings.otp.isEnabled);
-      } catch (err) {
-        setError('Failed to load settings data');
-        console.error('Error fetching settings:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
 
   /**
    * Handlers
@@ -149,23 +142,12 @@ const SettingsPage = () => {
     );
   };
 
-  const handleSubmit = async () => {
-    try {
-      // TODO: Replace with actual API call
-      // const response = await fetch('your-api-endpoint', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     products,
-      //     delivery,
-      //     settings: { otp: { isEnabled: otpEnabled } }
-      //   })
-      // });
-      
-      console.log('Settings saved:', { products, delivery, otpEnabled });
-    } catch (err) {
-      console.error('Failed to save settings:', err);
-    }
+  const handleOTPChange = (checked) => {
+    setOtpEnabled(checked);
+    submit(
+      { otpEnabled: checked.toString() },
+      { method: "post" }
+    );
   };
 
   /**
@@ -242,7 +224,7 @@ const SettingsPage = () => {
         <Checkbox
           label="Enable OTP"
           checked={otpEnabled}
-          onChange={setOtpEnabled}
+          onChange={handleOTPChange}
         />
       </InlineStack>
       {otpEnabled && (
@@ -253,10 +235,6 @@ const SettingsPage = () => {
             onChange={setOtpReceived}
             value={otpReceived}
           />
-          <InlineStack gap="200">
-            <Button onClick={handleSubmit} primary>Save Changes</Button>
-            <Button onClick={() => window.location.reload()}>Reset</Button>
-          </InlineStack>
         </BlockStack>
       )}
     </BlockStack>
@@ -269,7 +247,7 @@ const SettingsPage = () => {
         <DropZone.FileUpload actionTitle="Add file" />
       </DropZone>
       <Text variant="bodySm" color="subdued">
-        Accepted formats: {data?.settings.bulkUpload.allowedFormats.join(", ")}
+        Accepted formats: {settings?.bulkUpload?.allowedFormats.join(", ")}
       </Text>
     </BlockStack>
   );

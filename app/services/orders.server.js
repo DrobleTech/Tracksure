@@ -33,6 +33,7 @@ const ORDERS_QUERY = `#graphql
             id
             firstName
             lastName
+            displayName
             email
             phone
             state
@@ -185,7 +186,7 @@ export async function upsertOrder(shopifyOrder) {
     // Prepare order data matching Prisma schema types
     const orderData = {
       orderDate: new Date(shopifyOrder.createdAt || new Date()),
-      name: shopifyOrder.customer.firstName + ' ' + shopifyOrder.customer.lastName || 'Unnamed Order',
+      name: (shopifyOrder.customer != null ? (shopifyOrder.customer.firstName + ' ' + shopifyOrder.customer.lastName) : 'Unnamed') + ' ' + (shopifyOrder.customer != null ? 'Order' : ''),
       email: shopifyOrder.email || '',  // Schema requires non-null
       phone: shopifyOrder.phone || '',  // Schema requires non-null
       orderId: orderId,

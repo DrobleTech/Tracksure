@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useFetcher } from "@remix-run/react";
+import { useFetcher, useLoaderData } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -14,11 +14,29 @@ import {
 } from "@shopify/polaris";
 import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
+import { syncAllOrders } from "../services/orders.server";
+import { json } from "@remix-run/node";
 
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
 
-  return null;
+  try {
+    console.log('Starting order sync for shop:', session.shop);
+    await syncAllOrders(admin.graphql);
+    console.log('Order sync completed successfully');
+    
+    return json({
+      status: "success",
+      shop: session.shop
+    });
+  } catch (error) {
+    console.error('Error syncing orders:', error);
+    return json({
+      status: "error",
+      error: error.message,
+      shop: session.shop
+    });
+  }
 };
 
 export const action = async ({ request }) => {
@@ -96,6 +114,7 @@ export default function Index() {
     "gid://shopify/Product/",
     "",
   );
+  const { status, error, shop } = useLoaderData();
 
   useEffect(() => {
     if (productId) {
@@ -307,7 +326,7 @@ export default function Index() {
                       to get started
                     </List.Item>
                     <List.Item>
-                      Explore Shopify’s API with{" "}
+                      Explore Shopify's API with{" "}
                       <Link
                         url="https://shopify.dev/docs/apps/tools/graphiql-admin-api"
                         target="_blank"
