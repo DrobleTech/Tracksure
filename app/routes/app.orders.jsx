@@ -17,75 +17,40 @@ import {
   BlockStack,
 } from "@shopify/polaris";
 import { FilterIcon, ViewIcon, CalendarIcon } from "@shopify/polaris-icons";
+import { json } from "@remix-run/node";
+import { useLoaderData } from "@remix-run/react";
+import prisma from "../db.server";
 
 // ===============================
-// Dummy Data & Constants
+// Loader Function
 // ===============================
+export async function loader() {
+  try {
+    const orders = await prisma.order.findMany({
+      include: {
+        customer: true
+      }
+    });
+    
+    // Convert BigInt to string before serialization
+    const serializedOrders = orders.map(order => ({
+      ...order,
+      productId: order.productId.toString(),
+      orderDate: order.orderDate.toISOString(),
+      createdAt: order.createdAt.toISOString(),
+      updatedAt: order.updatedAt.toISOString()
+    }));
 
-/**
- * Sample order data structure
- */
-const DUMMY_ORDERS = [
-  {
-    id: "1",
-    orderDate: "2024-03-20T10:30:00Z", // ISO format
-    name: "John Doe",
-    email: "john@example.com",
-    phone: "+1234567890",
-    orderId: "#ORD-001",
-    product: "Product A",
-    payment: "Paid",
-    paymentMethod: "Credit Card",
-    tier: "Premium",
-    address: "123 Main St, City",
-    riskVerification: "Verified",
-    tags: "Priority",
-    otp: "Verified",
-    ivr: "Completed",
-    shipmentStatus: "Delivered",
-  },
-  {
-    id: "2",
-    orderDate: "03/19/2024", // US format
-    name: "Jane Smith",
-    email: "jane@example.com",
-    phone: "+1987654321",
-    orderId: "#ORD-002",
-    product: "Product B",
-    payment: "Pending",
-    paymentMethod: "PayPal",
-    tier: "Standard",
-    address: "456 Oak St, Town",
-    riskVerification: "Pending",
-    tags: "New",
-    otp: "Pending",
-    ivr: "Pending",
-    shipmentStatus: "Processing",
-  },
-  {
-    id: "3",
-    orderDate: "03-18-2024", // US format
-    name: "Mike Johnson",
-    email: "mike@example.com",
-    phone: "+1122334455",
-    orderId: "#ORD-003",
-    product: "Product C",
-    payment: "Paid",
-    paymentMethod: "Bank Transfer",
-    tier: "Premium",
-    address: "789 Pine St, Village",
-    riskVerification: "Verified",
-    tags: "Urgent",
-    otp: "Failed",
-    ivr: "Failed",
-    shipmentStatus: "On Hold",
-  },
-];
+    return json({ orders: serializedOrders });
+  } catch (error) {
+    console.error("Error loading orders:", error);
+    return json({ orders: [] });
+  }
+}
 
-/**
- * Column definitions for the orders table
- * Each column has a key, title, type, and optional configuration
- */
+// ===============================
+// Column definitions for the orders table
+// ===============================
 const TABLE_COLUMNS = [
   { key: "name", title: "Name", type: "text", toggleable: true },
   { key: "email", title: "Email", type: "text", toggleable: true },
@@ -96,13 +61,13 @@ const TABLE_COLUMNS = [
     key: "payment",
     title: "Paid/Pending",
     type: "select",
-    options: ["Paid", "Pending"],
+    options: ["PAID", "PENDING", "AUTHORIZED", "PARTIALLY_PAID", "PARTIALLY_REFUNDED", "REFUNDED", "VOIDED"],
   },
   {
     key: "paymentMethod",
     title: "Payment Method",
     type: "select",
-    options: ["Credit Card", "PayPal", "Bank Transfer"],
+    options: ["CREDIT_CARD", "DEBIT", "PAYPAL", "SHOP_PAY", "APPLE_PAY", "GOOGLE_PAY", "BANK_TRANSFER", "CASH_ON_DELIVERY"],
   },
   {
     key: "tier",
@@ -115,31 +80,30 @@ const TABLE_COLUMNS = [
     key: "riskVerification",
     title: "Risk Verification",
     type: "select",
-    options: ["Verified", "Pending"],
+    options: ["HIGH", "MEDIUM", "LOW", "VERIFIED", "PENDING"],
   },
   {
     key: "tags",
     title: "Tags",
-    type: "select",
-    options: ["Priority", "New", "Urgent"],
+    type: "text",
   },
   {
     key: "otp",
     title: "OTP",
     type: "select",
-    options: ["Verified", "Pending", "Failed"],
+    options: ["VERIFIED", "PENDING", "FAILED", "EXPIRED", "NOT_SENT"],
   },
   {
     key: "ivr",
     title: "IVR",
     type: "select",
-    options: ["Completed", "Pending", "Failed"],
+    options: ["COMPLETED", "PENDING", "FAILED", "NO_ANSWER", "BUSY", "SCHEDULED"],
   },
   {
     key: "shipmentStatus",
     title: "Shipment Status",
     type: "select",
-    options: ["Delivered", "Processing", "On Hold"],
+    options: ["FULFILLED", "PARTIAL", "UNFULFILLED", "DELIVERED", "IN_TRANSIT", "OUT_FOR_DELIVERY", "ATTEMPTED", "FAILED", "CANCELLED", "ON_HOLD", "RETURNED"],
   },
 ];
 
@@ -158,6 +122,10 @@ const SHOW_OPTIONS = [
 // ===============================
 
 const OrdersPage = () => {
+  // Get orders from loader
+  const { orders } = useLoaderData();
+  console.log('Orders:', orders);
+
   // ===============================
   // State Management
   // ===============================
@@ -216,7 +184,6 @@ const OrdersPage = () => {
    */
   const handleDateRangeChange = ({ start, end }) => {
     setSelectedDates({ start, end });
-    // Add your logic here to filter orders based on date range
   };
 
   const formatDate = (date) => {
@@ -237,25 +204,14 @@ const OrdersPage = () => {
   // Data Processing
   // ===============================
 
-  // Add date parsing utility
-  const parseDate = (dateString) => {
-    if (!dateString) return null;
-    
-    // Handle different date formats
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? null : date;
-  };
-
   /**
    * Filter data based on filters
    */
   const filteredData = useMemo(() => {
-    return DUMMY_ORDERS.filter((order) => {
+    return orders.filter((order) => {
       // Date range filter
       if (selectedDates.start && selectedDates.end) {
-        const orderDate = parseDate(order.orderDate);
-        if (!orderDate) return false;
-        
+        const orderDate = new Date(order.orderDate);
         const start = new Date(selectedDates.start);
         const end = new Date(selectedDates.end);
         start.setHours(0, 0, 0, 0);
@@ -266,17 +222,15 @@ const OrdersPage = () => {
         }
       }
 
-      // Existing filters
+      // Text and select filters
       return Object.entries(filters).every(([key, value]) => {
         if (!value) return true;
         const orderValue = order[key];
-        return (
-          orderValue &&
-          orderValue.toString().toLowerCase().includes(value.toLowerCase())
-        );
+        return orderValue && 
+               orderValue.toString().toLowerCase().includes(value.toLowerCase());
       });
     });
-  }, [filters, selectedDates]);
+  }, [orders, filters, selectedDates]);
 
   /**
    * Get visible columns based on visibility settings
@@ -291,10 +245,18 @@ const OrdersPage = () => {
    * Convert filtered data to table rows
    */
   const rows = useMemo(() => {
-    return filteredData.map((order) =>
-      visibleColumns.map((column) => order[column.key] || "--"),
-    );
-  }, [filteredData, visibleColumns]);
+    const startIndex = (currentPage - 1) * parseInt(showEntries);
+    const endIndex = startIndex + parseInt(showEntries);
+    
+    return filteredData
+      .slice(startIndex, endIndex)
+      .map((order) => visibleColumns.map((column) => {
+        if (column.key === 'orderDate') {
+          return new Date(order[column.key]).toLocaleDateString();
+        }
+        return order[column.key] || "--"
+      }));
+  }, [filteredData, visibleColumns, currentPage, showEntries]);
 
   // ===============================
   // Render
@@ -471,7 +433,7 @@ const OrdersPage = () => {
                     setCurrentPage((prev) => Math.max(1, prev - 1))
                   }
                   hasNext={
-                    currentPage < Math.ceil(rows.length / parseInt(showEntries))
+                    currentPage < Math.ceil(filteredData.length / parseInt(showEntries))
                   }
                   onNext={() => setCurrentPage((prev) => prev + 1)}
                 />
