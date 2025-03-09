@@ -198,6 +198,15 @@ enum ShipmentStatus {
   RETURNED // Order was returned
 }
 
+// Matches Shopify's cancel_reason field
+enum OrderCancelReason {
+  CUSTOMER // Canceled by customer
+  FRAUD // Fraudulent order
+  INVENTORY // Inventory unavailable
+  DECLINED // Payment declined
+  OTHER // Other reasons
+}
+
 // ==========================================
 // Analytics Models
 // Used in: Dashboard metrics and analytics
@@ -261,4 +270,21 @@ model Summary {
   updatedAt   DateTime   @updatedAt
 
   @@map("summary")
+}
+
+// ==========================================
+// CancelOrder Model
+// Used in: Cancel Orders management
+// File: app/routes/app.cancelOrders.jsx
+// Purpose: Tracks orders that need to be cancelled
+// ==========================================
+model CancelOrder {
+  id        Int               @id @default(autoincrement())
+  orderId   String           @unique // Shopify order ID
+  email     String // Customer email
+  refund    Boolean          @default(false) // Whether to refund
+  restock   Boolean          @default(true) // Whether to restock items
+  reason    OrderCancelReason // Reason for cancellation
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 }
