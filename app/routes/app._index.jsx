@@ -14,29 +14,15 @@ import {
 } from "@shopify/polaris";
 import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
-import { syncAllOrders } from "../services/orders.server";
 import { json } from "@remix-run/node";
 
 export const loader = async ({ request }) => {
-  const { admin, session } = await authenticate.admin(request);
-
-  try {
-    console.log('Starting order sync for shop:', session.shop);
-    await syncAllOrders(admin.graphql);
-    console.log('Order sync completed successfully');
-    
-    return json({
-      status: "success",
-      shop: session.shop
-    });
-  } catch (error) {
-    console.error('Error syncing orders:', error);
-    return json({
-      status: "error",
-      error: error.message,
-      shop: session.shop
-    });
-  }
+  const { session } = await authenticate.admin(request);
+  
+  return json({
+    status: "success",
+    shop: session.shop
+  });
 };
 
 export const action = async ({ request }) => {

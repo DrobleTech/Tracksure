@@ -95,130 +95,210 @@ export async function getAnalytics() {
   };
 }
 
-// Example usage
-// const result = await updateAnalyticsData();
-// if (result.success) {
-//   console.log(result.message);
-// } else {
-//   console.error(result.message);
-// } 
+/**
+ * Gets default values for analytics initialization
+ */
+function getDefaultAnalyticsData() {
+  return {
+    metrics: {
+      cutOffQuality: 70,
+      totalOrders: 156,
+      flaggedOrders: 10,
+      ordersToShip: 146,
+      tracksureDelivery: 10,
+    },
+    profitCurve: {
+      orderPoints: "[0, 20, 40, 60, 80, 100, 120, 140, 154]",
+      profitValues: "[0, 1000, 2800, 4500, 6800, 8200, 9100, 8800, 7500]",
+      maxOrder: 120,
+      maxProfit: 9100,
+    },
+    performance: {
+      allShipping: JSON.stringify({
+        totalOrders: 156,
+        deliveryPercentage: 55,
+        undeliveredOrders: 36,
+      }),
+      trackscore: JSON.stringify({
+        totalOrders: 120,
+        deliveryPercentage: 78,
+        undeliveredOrders: 10,
+      }),
+    },
+    costs: {
+      allShipping: JSON.stringify({
+        revenue: 3200,
+        productCosts: 10000,
+        adCosts: 8000,
+        shippingCosts: 5500,
+        packingCosts: 1020,
+      }),
+      trackscore: JSON.stringify({
+        revenue: 3100,
+        productCosts: 8400,
+        adCosts: 8000,
+        shippingCosts: 4620,
+        packingCosts: 660,
+      }),
+    },
+    summary: {
+      allShipping: JSON.stringify({
+        netProfit: 7480,
+        inventrySaved: 0,
+        capitalUsed: 24520,
+        capitalSaved: 0,
+        capitalEfficiency: 0,
+        totalSavings: 0,
+      }),
+      trackscore: JSON.stringify({
+        netProfit: 9320,
+        inventrySaved: 8,
+        capitalUsed: 21680,
+        capitalSaved: 2840,
+        capitalEfficiency: 0,
+        totalSavings: 4680,
+      }),
+    },
+  };
+}
 
+/**
+ * Checks if analytics data is already initialized
+ * @returns {Promise<{initialized: boolean, missingTables: string[]}>}
+ */
+async function isAnalyticsInitialized() {
+  const tables = {
+    metrics: prisma.metrics.findUnique({ where: { id: "singleton" } }),
+    profitCurve: prisma.profitCurve.findUnique({ where: { id: "singleton" } }),
+    performance: prisma.performance.findUnique({ where: { id: "singleton" } }),
+    costs: prisma.costs.findUnique({ where: { id: "singleton" } }),
+    summary: prisma.summary.findUnique({ where: { id: "singleton" } }),
+  };
 
-// export async function updateAnalyticsData() {
-//   try {
-//     // Update Performance Metrics
-//     await prisma.performance.upsert({
-//       where: { id: "singleton" },
-//       update: {
-//         allShipping: JSON.stringify({
-//           totalOrders: 156,
-//           deliveryPercentage: 55,
-//           undeliveredOrders: 36,
-//         }),
-//         trackscore: JSON.stringify({
-//           totalOrders: 120,
-//           deliveryPercentage: 78,
-//           undeliveredOrders: 10,
-//         }),
-//       },
-//       create: {
-//         id: "singleton",
-//         allShipping: JSON.stringify({
-//           totalOrders: 156,
-//           deliveryPercentage: 55,
-//           undeliveredOrders: 36,
-//         }),
-//         trackscore: JSON.stringify({
-//           totalOrders: 120,
-//           deliveryPercentage: 78,
-//           undeliveredOrders: 10,
-//         }),
-//       },
-//     });
+  const results = await Promise.all(Object.values(tables));
+  const missingTables = Object.keys(tables).filter((key, index) => !results[index]);
+  
+  return {
+    initialized: missingTables.length === 0,
+    missingTables,
+  };
+}
 
-//     // Update Costs
-//     await prisma.costs.upsert({
-//       where: { id: "singleton" },
-//       update: {
-//         allShipping: JSON.stringify({
-//           revenue: 3200,
-//           productCosts: 10000,
-//           adCosts: 8000,
-//           shippingCosts: 5500,
-//           packingCosts: 1020,
-//         }),
-//         trackscore: JSON.stringify({
-//           revenue: 3100,
-//           productCosts: 8400,
-//           adCosts: 8000,
-//           shippingCosts: 4620,
-//           packingCosts: 660,
-//         }),
-//       },
-//       create: {
-//         id: "singleton",
-//         allShipping: JSON.stringify({
-//           revenue: 3200,
-//           productCosts: 10000,
-//           adCosts: 8000,
-//           shippingCosts: 5500,
-//           packingCosts: 1020,
-//         }),
-//         trackscore: JSON.stringify({
-//           revenue: 3100,
-//           productCosts: 8400,
-//           adCosts: 8000,
-//           shippingCosts: 4620,
-//           packingCosts: 660,
-//         }),
-//       },
-//     });
+/**
+ * Initializes analytics data only if it hasn't been initialized before
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
+export async function initializeAnalyticsData() {
+  try {
+    const { initialized, missingTables } = await isAnalyticsInitialized();
+    
+    if (initialized) {
+      return { success: true, message: "Analytics data already initialized" };
+    }
 
-//     // Update Summary
-//     await prisma.summary.upsert({
-//       where: { id: "singleton" },
-//       update: {
-//         allShipping: JSON.stringify({
-//           netProfit: 7480,
-//           inventrySaved: 0,
-//           capitalUsed: 24520,
-//           capitalSaved: 0,
-//           capitalEfficiency: 0,
-//           totalSavings: 0,
-//         }),
-//         trackscore: JSON.stringify({
-//           netProfit: 9320,
-//           inventrySaved: 8,
-//           capitalUsed: 21680,
-//           capitalSaved: 2840,
-//           capitalEfficiency: 0,
-//           totalSavings: 4680,
-//         }),
-//       },
-//       create: {
-//         id: "singleton",
-//         allShipping: JSON.stringify({
-//           netProfit: 7480,
-//           inventrySaved: 0,
-//           capitalUsed: 24520,
-//           capitalSaved: 0,
-//           capitalEfficiency: 0,
-//           totalSavings: 0,
-//         }),
-//         trackscore: JSON.stringify({
-//           netProfit: 9320,
-//           inventrySaved: 8,
-//           capitalUsed: 21680,
-//           capitalSaved: 2840,
-//           capitalEfficiency: 0,
-//           totalSavings: 4680,
-//         }),
-//       },
-//     });
+    // Only initialize missing tables
+    const defaultData = getDefaultAnalyticsData();
+    const initPromises = missingTables.map(table => {
+      return prisma[table].create({
+        data: {
+          id: "singleton",
+          ...defaultData[table],
+        },
+      });
+    });
 
-//     return { success: true, message: "Analytics data updated successfully" };
-//   } catch (error) {
-//     console.error("Error updating analytics data:", error);
-//     return { success: false, message: error.message };
-//   }
-// }
+    await Promise.all(initPromises);
+    return { 
+      success: true, 
+      message: `Initialized missing analytics tables: ${missingTables.join(", ")}` 
+    };
+  } catch (error) {
+    console.error("Error initializing analytics data:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * Updates analytics data while preserving existing values
+ */
+export async function updateAnalyticsData() {
+  const defaultData = getDefaultAnalyticsData();
+  
+  // Get existing data first
+  const [existingMetrics, existingProfitCurve, existingPerformance, existingCosts, existingSummary] = 
+    await Promise.all([
+      prisma.metrics.findUnique({ where: { id: "singleton" } }),
+      prisma.profitCurve.findUnique({ where: { id: "singleton" } }),
+      prisma.performance.findUnique({ where: { id: "singleton" } }),
+      prisma.costs.findUnique({ where: { id: "singleton" } }),
+      prisma.summary.findUnique({ where: { id: "singleton" } }),
+    ]);
+
+  // Update each table while preserving existing data
+  await prisma.metrics.upsert({
+    where: { id: "singleton" },
+    update: {
+      ...existingMetrics,
+      // Add any new fields or updates here
+    },
+    create: {
+      id: "singleton",
+      ...defaultData.metrics,
+    },
+  });
+
+  await prisma.profitCurve.upsert({
+    where: { id: "singleton" },
+    update: {
+      ...existingProfitCurve,
+      // Add any new fields or updates here
+    },
+    create: {
+      id: "singleton",
+      ...defaultData.profitCurve,
+    },
+  });
+
+  try {
+    await prisma.performance.upsert({
+      where: { id: "singleton" },
+      update: {
+        ...existingPerformance,
+        // Add any new fields or updates here
+      },
+      create: {
+        id: "singleton",
+        ...defaultData.performance,
+      },
+    });
+
+    await prisma.costs.upsert({
+      where: { id: "singleton" },
+      update: {
+        ...existingCosts,
+        // Add any new fields or updates here
+      },
+      create: {
+        id: "singleton",
+        ...defaultData.costs,
+      },
+    });
+
+    await prisma.summary.upsert({
+      where: { id: "singleton" },
+      update: {
+        ...existingSummary,
+        // Add any new fields or updates here
+      },
+      create: {
+        id: "singleton",
+        ...defaultData.summary,
+      },
+    });
+
+    return { success: true, message: "Analytics data updated successfully" };
+  } catch (error) {
+    console.error("Error updating analytics data:", error);
+    return { success: false, message: error.message };
+  }
+}
