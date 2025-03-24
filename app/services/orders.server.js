@@ -21,6 +21,8 @@ const ORDERS_QUERY = `#graphql
           displayFulfillmentStatus
           riskLevel
           paymentGatewayNames
+          cancelledAt
+          closed
           billingAddress {
             address1
             address2
@@ -44,6 +46,7 @@ const ORDERS_QUERY = `#graphql
               node {
                 product {
                   id
+                  title
                 }
               }
             }
@@ -53,6 +56,7 @@ const ORDERS_QUERY = `#graphql
     }
   }
 `;
+
 
 export async function syncAllOrders(client) {
   let hasNextPage = true;
@@ -82,6 +86,7 @@ export async function syncAllOrders(client) {
           await upsertOrder(order);
           successCount++;
         } catch (error) {
+          console.log('Error upserting order:', error);
           errorCount++;
         }
       }
@@ -92,6 +97,7 @@ export async function syncAllOrders(client) {
 
     return { totalOrders, successCount, errorCount };
   } catch (error) {
+    console.log('Error syncing orders:', error);
     throw error;
   }
 }
@@ -144,6 +150,11 @@ export async function upsertOrder(shopifyOrder) {
     customerId = customer.id;
   }
 
+  const existingOrder = await prisma.order.findUnique({
+    where: { orderId }
+  });
+
+
   const orderData = {
     orderDate: new Date(shopifyOrder.createdAt || new Date()),
     name: (shopifyOrder.customer != null ? 
@@ -152,7 +163,8 @@ export async function upsertOrder(shopifyOrder) {
     email: shopifyOrder.email || '',
     phone: shopifyOrder.phone || '',
     orderId: orderId,
-    productId: productId,
+    productId: String(productId) || null,
+    productName: shopifyOrder.lineItems.edges[0].node.product.title || 'Unknown Product',
     payment: mapFinancialStatus(shopifyOrder.displayFinancialStatus),
     paymentMethod: mapPaymentMethod(shopifyOrder.paymentGatewayNames?.[0]),
     tier: 'Standard',
@@ -162,7 +174,15 @@ export async function upsertOrder(shopifyOrder) {
     tags: shopifyOrder.tags?.join(',') || null,
     otp: 'NOT_SENT',
     ivr: 'PENDING',
-    shipmentStatus: mapFulfillmentStatus(shopifyOrder.displayFulfillmentStatus)
+    shipmentStatus: mapFulfillmentStatus(shopifyOrder.displayFulfillmentStatus),
+    paymentValue: existingOrder?.paymentValue ?? 0,
+    qualityScore: existingOrder?.qualityScore ?? 0,
+    tierCity: existingOrder?.tierCity ?? null,
+    deliveryTime: existingOrder?.deliveryTime ?? null,
+    flagged: existingOrder?.flagged ?? false,
+    shippable: existingOrder?.shippable ?? false,
+    cancelledAt: shopifyOrder.cancelledAt || null,
+    closed: shopifyOrder.closed ? true : false
   };
 
   return prisma.order.upsert({
@@ -234,4 +254,4 @@ function mapRiskStatus(risk) {
     'pending': 'PENDING'
   };
   return riskMap[risk?.toLowerCase()] || 'PENDING';
-} 
+}

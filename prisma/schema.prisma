@@ -36,7 +36,6 @@ model Session {
   collaborator  Boolean?  @default(false) // Whether user is a collaborator
   emailVerified Boolean?  @default(false) // Email verification status
 }
-
 // ==========================================
 // Product Model
 // Used in: Settings page and Order management
@@ -47,13 +46,6 @@ model Session {
 // ==========================================
 model Product {
   id        Int      @id @default(autoincrement())
-  name      String // Product name
-  price     Float // Selling price
-  mrp       Float // Maximum retail price
-  shipping  Float // Shipping cost
-  cpp       Float // Cost per product
-  packing   Float // Packing cost
-  // orders      Order[]   // Related orders
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -67,7 +59,7 @@ model Product {
 // Purpose: Stores customer information and their order history
 // ==========================================
 model Customer {
-  id        String   @id // Shopify customer ID
+  id        String   @id// Shopify customer ID
   firstName String?
   lastName  String?
   email     String   @unique
@@ -92,110 +84,30 @@ model Order {
   email            String // Customer email
   phone            String // Customer phone
   orderId          String         @unique // External order reference
-  // product        Product   @relation(fields: [productId], references: [id])
-  productId        BigInt // Reference to product
+  productId        String? // Reference to product
+  productName      String? // Product name
   payment          PaymentStatus // Payment status (PAID/PENDING)
   paymentMethod    PaymentMethod // Payment method used
   tier             String // Customer tier (Premium/Standard)
   address          String // Delivery address
   customer         Customer?      @relation(fields: [customerId], references: [id]) // Relation to customer
-  customerId       String? // Reference to customer
-  riskVerification RiskStatus // Risk verification status
-  tags             String? // Order tags (Priority/New/Urgent)
-  otp              OTPStatus // OTP verification status
-  ivr              IVRStatus // IVR call status
-  shipmentStatus   ShipmentStatus // Current shipment status
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-}
+  customerId      String?
+  riskVerification RiskStatus
+  tags            String?
+  paymentValue     Float?     
+  otp             OtpStatus
+  ivr             IvrStatus
+  shipmentStatus  ShipmentStatus
+  qualityScore    Float?      
+  tierCity        String?
+  deliveryTime    String?
+  cancelledAt     String?  
+  closed          Boolean?  
+  flagged         Boolean?    
+  shippable       Boolean ?   
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
-// ==========================================
-// Settings Model
-// Used in: Settings page
-// File: app/routes/app.settings.jsx
-// Purpose: Stores application configuration
-// ==========================================
-model Settings {
-  id                     Int      @id @default(autoincrement())
-  otpEnabled             Boolean  @default(true) // OTP verification toggle
-  currentPastDPercentage Float // Past delivery percentage
-  allowedFileFormats     String // Allowed upload formats (.csv,.xlsx)
-  updatedAt              DateTime @updatedAt
-}
-
-// ==========================================
-// Enums
-// Used in: Order processing and status tracking
-// Files: 
-// - app/routes/app.orders.jsx
-// - app/routes/app.dashboard.jsx
-// Purpose: Define standardized status values aligned with Shopify API
-// ==========================================
-
-// Matches Shopify's financial_status field
-enum PaymentStatus {
-  AUTHORIZED // Payment has been authorized but not captured
-  PAID // Payment has been received
-  PARTIALLY_PAID // Partial payment has been received
-  PARTIALLY_REFUNDED // Order has been partially refunded
-  PENDING // Payment is pending
-  REFUNDED // Order has been fully refunded
-  VOIDED // Payment has been voided
-}
-
-// Matches Shopify's payment_gateway_names field
-enum PaymentMethod {
-  CREDIT_CARD // Credit card payment
-  DEBIT // Debit card payment
-  PAYPAL // PayPal payment
-  SHOP_PAY // Shop Pay payment
-  APPLE_PAY // Apple Pay payment
-  GOOGLE_PAY // Google Pay payment
-  BANK_TRANSFER // Direct bank transfer
-  CASH_ON_DELIVERY // Cash on delivery
-}
-
-// Matches Shopify's risk_level field
-enum RiskStatus {
-  HIGH // High risk order
-  MEDIUM // Medium risk order
-  LOW // Low risk order
-  VERIFIED // Order has been verified
-  PENDING // Risk assessment pending
-}
-
-// Custom enum for OTP verification
-enum OTPStatus {
-  VERIFIED // OTP has been verified
-  PENDING // OTP verification pending
-  FAILED // OTP verification failed
-  EXPIRED // OTP has expired
-  NOT_SENT // OTP not sent yet
-}
-
-// Custom enum for IVR status
-enum IVRStatus {
-  COMPLETED // IVR call completed successfully
-  PENDING // IVR call pending
-  FAILED // IVR call failed
-  NO_ANSWER // No answer on IVR call
-  BUSY // Line was busy
-  SCHEDULED // Call scheduled for later
-}
-
-// Matches Shopify's fulfillment_status field
-enum ShipmentStatus {
-  FULFILLED // Order has been fulfilled
-  PARTIAL // Order has been partially fulfilled
-  UNFULFILLED // Order has not been fulfilled
-  DELIVERED // Order has been delivered
-  IN_TRANSIT // Order is in transit
-  OUT_FOR_DELIVERY // Order is out for delivery
-  ATTEMPTED // Delivery was attempted
-  FAILED // Delivery failed
-  CANCELLED // Order was cancelled
-  ON_HOLD // Order is on hold
-  RETURNED // Order was returned
 }
 
 // Matches Shopify's cancel_reason field
@@ -208,71 +120,6 @@ enum OrderCancelReason {
 }
 
 // ==========================================
-// Analytics Models
-// Used in: Dashboard metrics and analytics
-// File: app/routes/app.dashboard.jsx
-// Purpose: Stores all dashboard-related metrics
-// ==========================================
-
-// Singleton model to store the latest analytics snapshot
-
-
-// Profit curve data
-model ProfitCurve {
-  id           String     @id @default("singleton")
-  orderPoints  String     @default("[]") // JSON string of Int array
-  profitValues String     @default("[]") // JSON string of Float array
-  maxOrder     Int // Optimal zone max order
-  maxProfit    Float // Optimal zone max profit
-  updatedAt    DateTime   @updatedAt
-
-  @@map("profit_curve")
-}
-
-// Key metrics
-model Metrics {
-  id                String     @id @default("singleton")
-  cutOffQuality     Float
-  totalOrders       Int
-  flaggedOrders     Int
-  ordersToShip      Int
-  tracksureDelivery Int
-  updatedAt         DateTime   @updatedAt
-
-  @@map("metrics")
-}
-
-// Performance metrics for different shipping methods
-model Performance {
-  id          String     @id @default("singleton")
-  allShipping String // JSON string of shipping performance
-  trackscore  String // JSON string of shipping performance
-  updatedAt   DateTime   @updatedAt
-
-  @@map("performance")
-}
-
-// Cost tracking for different shipping methods
-model Costs {
-  id          String     @id @default("singleton")
-  allShipping String // JSON string of shipping costs
-  trackscore  String // JSON string of shipping costs
-  updatedAt   DateTime   @updatedAt
-
-  @@map("costs")
-}
-
-// Summary metrics for different shipping methods
-model Summary {
-  id          String     @id @default("singleton")
-  allShipping String // JSON string of shipping summary
-  trackscore  String // JSON string of shipping summary
-  updatedAt   DateTime   @updatedAt
-
-  @@map("summary")
-}
-
-// ==========================================
 // CancelOrder Model
 // Used in: Cancel Orders management
 // File: app/routes/app.cancelOrders.jsx
@@ -281,10 +128,121 @@ model Summary {
 model CancelOrder {
   id        Int               @id @default(autoincrement())
   orderId   String           @unique // Shopify order ID
-  email     String // Customer email
+  email     String                    // Customer email
   refund    Boolean          @default(false) // Whether to refund
   restock   Boolean          @default(true) // Whether to restock items
   reason    OrderCancelReason // Reason for cancellation
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
+}
+
+model DashboardSettings {
+  id                String   @id @default(cuid())
+  initialThreshold  Float    @default(75)
+  totalOrders      Int      @default(156)
+  flaggedOrders    Int      @default(36)
+  ordersToShip     Int      @default(120)
+  deliveryRate     Float    @default(78)
+  previousDeliveryRate Float @default(56)
+  dailySavings     Float    @default(27000)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model DashboardCosts {
+  id                    String   @id @default(cuid())
+  forwardShipping       Float    @default(80)
+  reverseShipping       Float    @default(60)
+  packaging            Float    @default(30)
+  storage              Float    @default(10)
+  averageStorageDays   Int      @default(15)
+  inventoryCostPerOrder Float    @default(1200)
+  marketingCostPerOrder Float    @default(200)
+  operationsCostPerOrder Float   @default(150)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model BusinessMetrics {
+  id                String   @id @default(cuid())
+  type              String   @unique// 'BASE' or 'SHIP_ALL'
+  profit            Float    
+  percentage        Float    
+  upfrontCost       Float    
+  capitalEfficiency Float    
+  rtoRate           Float    
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @default(now())
+
+  @@index([type])
+}
+
+// Remove both existing CutoffMode models and replace with single model
+model CutoffMode {
+  id          String   @id @default(cuid())
+  modeId      String   @unique // aggressive, balanced, maximum
+  name        String
+  description String
+  threshold   Float
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+enum PaymentStatus {
+  AUTHORIZED
+  PAID
+  PARTIALLY_PAID
+  PARTIALLY_REFUNDED
+  PENDING
+  REFUNDED
+  VOIDED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT
+  PAYPAL
+  SHOP_PAY
+  APPLE_PAY
+  GOOGLE_PAY
+  BANK_TRANSFER
+  CASH_ON_DELIVERY
+}
+
+enum RiskStatus {
+  HIGH
+  MEDIUM
+  LOW
+  VERIFIED
+  PENDING
+}
+
+enum OtpStatus {
+  SENT
+  VERIFIED
+  FAILED
+  NOT_SENT
+}
+
+enum IvrStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum ShipmentStatus {
+  FULFILLED
+  PARTIAL
+  UNFULFILLED
+  DELIVERED
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  ATTEMPTED
+  FAILED
+  CANCELLED
+  ON_HOLD
+  RETURNED
 }

@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "527dcbed47577119f27372363add0883"
-application_url = "https://donations-algorithm-cemetery-rolls.trycloudflare.com"
+application_url = "https://stripes-cordless-eng-centuries.trycloudflare.com"
 embedded = true
 name = "Tracksure"
 handle = "tracksure-1"
@@ -23,13 +23,13 @@ api_version = "2025-01"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products, write_orders, read_orders, read_customers"
+scopes = "write_products, write_orders, read_orders, read_customers, read_assigned_fulfillment_orders, read_merchant_managed_fulfillment_orders, read_third_party_fulfillment_orders, write_third_party_fulfillment_orders, write_merchant_managed_fulfillment_orders, write_assigned_fulfillment_orders"
 
 [auth]
 redirect_urls = [
-  "https://donations-algorithm-cemetery-rolls.trycloudflare.com/auth/callback",
-  "https://donations-algorithm-cemetery-rolls.trycloudflare.com/auth/shopify/callback",
-  "https://donations-algorithm-cemetery-rolls.trycloudflare.com/api/auth/callback"
+  "https://stripes-cordless-eng-centuries.trycloudflare.com/auth/callback",
+  "https://stripes-cordless-eng-centuries.trycloudflare.com/auth/shopify/callback",
+  "https://stripes-cordless-eng-centuries.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]

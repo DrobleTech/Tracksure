@@ -4,9 +4,11 @@ import { AppProvider } from "@shopify/shopify-app-remix/react";
 import { NavMenu } from "@shopify/app-bridge-react";
 import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
 import { authenticate } from "../shopify.server";
-import { initializeAnalyticsData } from "../services/analytics.server";
+// import { initializeAnalyticsData } from "../services/analytics.server";
 import { syncAllOrders } from "../services/orders.server";
 import { json } from "@remix-run/node";
+
+import { initializeDashboardData } from "../services/dashboard.server";
 
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
@@ -14,7 +16,8 @@ export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
   
   // Initialize analytics data if not already initialized
-  await initializeAnalyticsData();
+  await initializeDashboardData();
+  // await initializeAnalyticsData();
   
   try {
     console.log('Starting order sync for shop:', session.shop);
@@ -39,10 +42,12 @@ export default function App() {
         <Link to="/app" rel="home">
           Home
         </Link>
-        <Link to="/app/dashboard">Dashboard</Link>
-        <Link to="/app/orders">Orders</Link>
+        {/* <Link to="/app/dashboard">Dashboard</Link> */}
+        <Link to="/app/dashboardV2">Dashboard V2</Link>
+        {/* <Link to="/app/orders">Orders</Link> */}
+        <Link to="/app/ordersV2">Orders V2</Link>
         <Link to="/app/cancelOrders">Cancel Orders</Link>
-        <Link to="/app/settings">Settings</Link>
+        {/* <Link to="/app/settings">Settings</Link> */}
       </NavMenu>
       <Outlet />
     </AppProvider>
